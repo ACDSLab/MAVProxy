@@ -38,14 +38,14 @@ class ViconModule(mp_module.MPModule):
         self.console.set_status('VAtt', 'VAtt -- -- --', row=5)
         self.vicon_settings = mp_settings.MPSettings(
             [('host', str, "vicon"),
-             ('origin_lat', float, -35.363261),
-             ('origin_lon', float, 149.165230),
-             ('origin_alt', float, 584.0),
-             ('vision_rate', int, 14),
+             ('origin_lat', float, 33.771992),
+             ('origin_lon', float, -84.396116),
+             ('origin_alt', float, 303.0),
+             ('vision_rate', int, 25),
              ('vel_filter_hz', float, 30.0),
-             ('gps_rate', int, 5),
+             ('gps_rate', int, 25),
              ('gps_nsats', float, 16),
-             ('yaw_offset', float, 0.0)])
+             ('yaw_offset', float, -90.0)])
         self.add_command('vicon', self.cmd_vicon, 'VICON control',
                          ["<start>",
                           "<stop>",
@@ -63,6 +63,7 @@ class ViconModule(mp_module.MPModule):
         self.last_frame_count = 0
         self.vel_filter = LowPassFilter2p.LowPassFilter2p(200.0, 30.0)
         self.actual_frame_rate = 0.0
+        self.vicon_init_count = 0;
 
     def thread_loop(self):
         '''background processing'''
@@ -120,7 +121,7 @@ class ViconModule(mp_module.MPModule):
 
             # convert to NED meters
             pos_ned = Vector3(pos_enu[1]*0.001, pos_enu[0]*0.001, -pos_enu[2]*0.001)
-
+            print(pos_ned)
             if last_frame_num is None or frame_num - last_frame_num > 100 or frame_num <= last_frame_num:
                 last_frame_num = frame_num
                 last_pos = pos_ned
@@ -170,6 +171,12 @@ class ViconModule(mp_module.MPModule):
                                                    int(self.vicon_settings.origin_alt*1.0e3),
                                                    time_us)
                 last_origin_send = now
+
+            if self.vicon_init_count < 60*self.vicon_settings.gps_rate:
+               pos_ned.y = 0;
+               pos_ned.x = 0;
+               pos_ned.z = 0;
+               self.vicon_init_count += 1
 
             if self.vicon_settings.gps_rate > 0 and now_ms - last_gps_send_ms > gps_period_ms:
                 '''send GPS data at the specified rate, trying to align on the given period'''
